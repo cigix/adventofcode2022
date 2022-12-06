@@ -8,8 +8,11 @@ if len(sys.argv) < 2:
 with open(sys.argv[1]) as f:
     message = f.read().strip()
 
-i = 4
-while len(set(message[i - 4:i])) != 4:
-    i += 1
+def marker(length, message):
+    i = length
+    while len(set(message[i - length:i])) != length:
+        i += 1
+    return i
 
-print(i) # part 1
+#print(marker(4, message)) # part 1
+print(marker(14, message)) # part 2
