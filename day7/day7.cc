@@ -1,10 +1,11 @@
+#include <algorithm>
 #include <fstream>
+#include <iostream>
 #include <ranges>
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include <iostream>
 
 class File
 {
@@ -78,7 +79,7 @@ int main(int argc, char **argv)
 
   std::vector<Dir> dirs;
   dirs.emplace_back(-1);
-  int root = 0;
+  const int root = 0;
   dirs[root].parent = root;
   int cwd = root;
 
@@ -118,12 +119,31 @@ int main(int argc, char **argv)
   std::cout << "- / (dir, size=" << dirs[root].getSize(dirs) << ")\n";
   dirs[root].print(std::cout, dirs, "  ");
 
-  unsigned sum = 0;
-  for (unsigned size :
-      dirs
-      | std::views::transform([&dirs](const Dir &d) { return d.getSize(dirs); })
-      | std::views::filter([](unsigned u) { return u <= 100000; }))
-    sum += size;
+  //unsigned sum = 0;
+  //for (unsigned size :
+  //    dirs
+  //    | std::views::transform([&dirs](const Dir &d) { return d.getSize(dirs); })
+  //    | std::views::filter([](unsigned u) { return u <= 100000; }))
+  //  sum += size;
 
-  std::cout << sum << std::endl;
+  //std::cout << sum << std::endl; // part 1
+
+  const unsigned totalsize = 70000000;
+  const unsigned needfree = 30000000;
+  const unsigned used = dirs[root].getSize(dirs);
+  const unsigned unused = totalsize - used;
+  const unsigned tofree = needfree - unused;
+
+  std::vector<unsigned> sizes(dirs.size());
+  std::transform(dirs.cbegin(), dirs.cend(), std::back_inserter(sizes),
+      [&dirs](const Dir &d) { return d.getSize(dirs); });
+  std::sort(sizes.begin(), sizes.end());
+  for (unsigned size : sizes)
+  {
+    if (tofree <= size)
+    {
+      std::cout << size << std::endl; // part 2
+      return 0;
+    }
+  }
 }
