@@ -44,4 +44,17 @@ fn main()
              .step_by(40)
              .map(|(i, x)| (i as i32 + 1) * x)
              .sum::<i32>()); // part 1
+
+    for (cycle, x) in cycles.iter().enumerate()
+    {
+        let cycle = cycle as i32;
+        if *x - 1 <= cycle % 40 && cycle % 40 <= *x + 1 {
+            print!("#");
+        } else {
+            print!(".");
+        }
+        if cycle % 40 == 39 {
+            println!();
+        }
+    }
 }
