@@ -5,6 +5,8 @@ import sys
 if len(sys.argv) < 2:
     exit(1)
 
+module = 1 # part 2
+
 class Monkey:
     # Constant attributes:
     #   - operation: str
@@ -26,9 +28,11 @@ class Monkey:
         self.items.append(level);
 
     def inspect(self, monkeys, old):
+        global module
         self.activity += 1
         new = eval(self.operation)
-        level = new // 3
+        #level = new // 3 # part 1
+        level = new % module # part 2
         if level % self.divtest == 0:
             monkeys[self.throwto[1]].receive_item(level)
         else:
@@ -53,11 +57,13 @@ for i in range(monkeynum):
     truemonkey = int(note[4][25:])
     falsemonkey = int(note[5][26:])
     monkeys.append(Monkey(start_items, operation, divtest, truemonkey, falsemonkey))
+    module *= divtest # part 2
 
-
-for _ in range(20):
+#for _ in range(20): # part 1
+import tqdm
+for _ in tqdm.trange(10000): # part 2
     for monkey in monkeys:
         monkey.round(monkeys)
 
 most_active = sorted(monkey.activity for monkey in monkeys)
-print(most_active[-1] * most_active[-2]) # part 1
+print(most_active[-1] * most_active[-2])
