@@ -27,17 +27,25 @@ distances = [
     for _ in range(rowcount)
 ]
 
-distances[start[1]][start[0]] = 0
+#distances[start[1]][start[0]] = 0 # part 1
+distances[end[1]][end[0]] = 0 # part 2
 
-queue = [start]
+#queue = [start] # part 1
+queue = [end] # part 2
 while queue:
     col, row = queue.pop(0)
 
-    if (col, row) == end:
-        break
+    # part 1
+    #if (col, row) == end:
+    #    break
 
     distance = distances[row][col]
     altitude = ord(lines[row][col])
+
+    # part 2
+    if altitude == ord('a'):
+        newstart = (col, row)
+        break
 
     def consider_neighbor(dx, dy):
         ncol = col + dx
@@ -46,7 +54,8 @@ while queue:
             return
         naltitude = ord(lines[nrow][ncol])
         # if more than 1 higher altitude
-        if altitude + 1 < naltitude:
+        #if altitude + 1 < naltitude: # part 1
+        if naltitude + 1 < altitude: # part 2
             return
         ndistance = distances[nrow][ncol]
         if ndistance <= distance + 1:
@@ -61,4 +70,5 @@ while queue:
     consider_neighbor(0, -1) # down
     consider_neighbor(-1, 0) # left
 
-print(distances[end[1]][end[0]]) # part 1
+#print(distances[end[1]][end[0]]) # part 1
+print(distances[newstart[1]][newstart[0]]) # part 2
