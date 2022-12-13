@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import functools
 import sys
 
 if len(sys.argv) < 2:
@@ -34,8 +35,13 @@ def complists(l1, l2):
 def complistsle(l1, l2):
     return complists(l1, l2) <= 0
 
+packets = [
+    eval(line)
+    for line in lines
+    if line
+]
 pairs = [
-    (eval(lines[i * 3]), eval(lines[i * 3 + 1]))
+    (packets[i * 2], packets[i * 2 + 1])
     for i in range(paircount)
 ]
 
@@ -51,3 +57,12 @@ print(
         )
     )
 )
+
+d1 = [[2]]
+d2 = [[6]]
+allpackets = packets + [d1, d2]
+
+allpackets = sorted(allpackets, key=functools.cmp_to_key(complists))
+
+# part 2
+print((allpackets.index(d1) + 1) * (allpackets.index(d2) + 1))
