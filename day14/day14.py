@@ -36,28 +36,49 @@ for path in paths:
             rocks.add(cur)
     
 lowest = max(map(lambda t: t[1], rocks))
+floor = lowest + 1
 
-sands = set()
+obstacles = set(rocks)
 
 sandstart = 500, 0
 while True:
     sand = sandstart
-    for _ in range(lowest): # lower at most `lowest` times
+    for _ in range(floor): # lower at most `floor` times
         candidate = sand[0], sand[1] + 1 # down
-        if candidate not in (rocks | sands):
+        if candidate not in obstacles:
             sand = candidate
             continue
         candidate = sand[0] - 1, sand[1] + 1 # down left
-        if candidate not in (rocks | sands):
+        if candidate not in obstacles:
             sand = candidate
             continue
         candidate = sand[0] + 1, sand[1] + 1 # down right
-        if candidate not in (rocks | sands):
+        if candidate not in obstacles:
             sand = candidate
             continue
         break # no candidates: stop the loop
-    if sand[1] == lowest:
+    # part 1
+    #if sand[1] == lowest:
+    #    break
+    obstacles.add(sand)
+    # part 2
+    if sand == sandstart:
         break
-    sands.add(sand)
 
-print(len(sands))
+print(len(obstacles) - len(rocks))
+
+# visualiser
+#minx = min(map(lambda t: t[0], obstacles))
+#maxx = max(map(lambda t: t[0], obstacles))
+#
+#for y in range(floor):
+#    for dx in range(maxx - minx):
+#        pos = minx + dx, y
+#        if pos in obstacles:
+#            if pos in rocks:
+#                print('#', end='')
+#            else:
+#                print('o', end='')
+#        else:
+#            print(' ', end='')
+#    print()
