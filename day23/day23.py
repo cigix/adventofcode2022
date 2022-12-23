@@ -35,9 +35,14 @@ directionkeys = {
     'E': ["E", "NE", "SE"]
 }
 
-for _ in range(10):
+#for _ in range(10): # part 1
+r = 0
+while True:
+    r += 1
+
     # dict of position to set of elves
     destinations = dict()
+    noadjacents = 0
     for elf in elves:
         adjacent = {
             addt(elf, move)
@@ -47,6 +52,7 @@ for _ in range(10):
         if not adjacent & elves:
             # register this elf's destination as itself
             destinations.setdefault(elf, set()).add(elf)
+            noadjacents += 1
             continue
 
         for direction in directions:
@@ -63,6 +69,11 @@ for _ in range(10):
             # register this elf's destination as itself
             destinations.setdefault(elf, set()).add(elf)
 
+    # part 2
+    if noadjacents == len(elves):
+        print(r)
+        exit(0)
+
     elves = set()
     for destination, elfset in destinations.items():
         if len(elfset) == 1:
@@ -73,8 +84,9 @@ for _ in range(10):
             elves.update(elfset)
     directions = directions[1:] + [directions[0]]
 
+# part 1
 minx = min(map(lambda t: t[0], elves))
 maxx = max(map(lambda t: t[0], elves))
 miny = min(map(lambda t: t[1], elves))
 maxy = max(map(lambda t: t[1], elves))
-print((maxx - minx + 1) * (maxy - miny + 1) - len(elves)) # part 1
+print((maxx - minx + 1) * (maxy - miny + 1) - len(elves))
