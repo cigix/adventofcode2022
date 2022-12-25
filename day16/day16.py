@@ -7,173 +7,111 @@ if len(sys.argv) < 2:
     exit(1)
 
 class Valve:
+    # name: str
+    # rate: int
+    # tunnels: set of str
     def __init__(self, name, rate, tunnels):
-        self.name = name # str
-        self.rate = rate # int
-        self.tunnels = tunnels # list of str
-
-    def __repr__(self):
-        return "{ " \
-               f"name={self.name:3s} " \
-               f"rate={self.rate:3d} "\
-               f"tunnels={','.join(self.tunnels)} " \
-               "}"
-
-with open(sys.argv[1]) as f:
-    lines = list(map(str.strip, f))
+        self.name = name
+        self.rate = rate
+        self.tunnels = tunnels
 
 valves = dict()
-for line in lines:
-    s = line.split()
-    name = s[1]
-    rate = int(s[4][5:-1])
-    tunnels = [
-        word.strip(',')
-        for word in s[9:]
-    ]
-    valves[name] = Valve(name, rate, tunnels)
+with open(sys.argv[1]) as f:
+    for line in f:
+        words = line.strip().split()
+        name = words[1]
+        rate = int(words[4][5:-1])
+        tunnels = {
+            word.strip(',')
+            for word in words[9:]
+        }
+        valves[name] = Valve(name, rate, tunnels)
 
-# valves that have some relief value
-reliefvalves = { valve.name for valve in valves.values() if valve.rate > 0 }
+# valves with some relief value
+reliefvalves = {
+    valve.name
+    for valve in valves.values()
+    if valve.rate > 0
+}
 
-# precomputed distances, from hashes of valve names
+# we enforce symmetric and minimal distances
 distances = { 0: 0 }
 def getdistance(src, dst):
     return distances.get(hash(src) ^ hash(dst))
-def setdistance(src, dst, dist):
-    distances[hash(src) ^ hash(dst)] = dist
+def setdistance(src, dst, distance):
+    k = hash(src) ^ hash(dst)
+    d = distances.get(k)
+    if d is None or distance < d:
+        distances[k] = distance
+        return True
+    return False
 
-def compute_distances_from(src):
+# precompute all distances
+for src in valves.values():
     visited = set()
-    tovisit = { (src, 0) }
+    tovisit = { (src.name, 0) }
     while tovisit:
-        curvalve, distance = tovisit.pop()
-        if (d := getdistance(src, curvalve)) is not None:
-            if distance < d:
-                setdistance(src, curvalve, distance)
+        curname, distance = tovisit.pop()
+        setdistance(src.name, curname, distance)
+        visited.add(curname)
+        for tunnel in valves[curname].tunnels - visited:
+            tovisit.add((tunnel, distance + 1))
 
-        visited.add(curvalve)
-        setdistance(src, curvalve, distance)
-
-        for tunnel in valves[curvalve].tunnels:
-            if tunnel not in visited:
-                tovisit.add((tunnel, distance + 1))
-
-for v in valves.values():
-    compute_distances_from(v.name)
-
-maxdist = max(distances.values())
-
-starttime = 30
-startvalve = "AA"
-
-class Path:
-    # curvalve: str, the valve this Path is currently at
-    # relief: int, the relief that was already achieved on this Path
-    # openvalves: set of str, the valves that were already opened on this Path
-    # remainingtime: int, the time remaining on this path
-    # onward: set of str, going towards these valves (prevents backtracking)
-    # trace: str, log of the valves
-    def __init__(self, curvalve, relief, openvalves, remainingtime, onward, trace):
-        self.curvalve = curvalve
+class State:
+    # name: str, the name of the valve this State is currently on
+    # relief: int, the relief already achieved on this State
+    # opened: frozenset of str, the valves that were opened in this State
+    # remaining: int, the remaining time
+    def __init__(self, name, relief, opened, remaining):
+        self.name = name
         self.relief = relief
-        self.openvalves = openvalves
-        self.remainingtime = remainingtime
-        self.onward = onward
-        self.trace = trace
+        self.opened = opened
+        self.remaining = remaining
 
-maxrelief = None
-def handlestuckpath(path):
-    global maxrelief
-    if maxrelief is not None and path.relief <= maxrelief:
-        return
-    print(path.trace, path.relief)
-    maxrelief = path.relief
+def getmaxreliefs(start, maxtime):
+    # mapping from sets of open valves to achievable reliefs
+    maxreliefs = dict()
 
-pathqueue = set()
-def handlepath(path):
-    if path.remainingtime <= 0:
-        # no time left to do anything
-        handlestuckpath(path)
-        return
+    def setmaxrelief(state):
+        key = state.opened
+        maxreliefs[key] = max(
+            maxreliefs.get(key, 0),
+            state.relief
+        )
 
-    lefttoopen = reliefvalves - path.openvalves
-    if not lefttoopen:
-        # cannot open anymore relief valves
-        handlestuckpath(path)
-        return
+    todo = { State(start, 0, frozenset(), maxtime) }
+    while todo:
+        state = todo.pop()
 
-    valve = valves[path.curvalve]
+        # what if we stopped here?
+        setmaxrelief(state)
 
-    if path.curvalve in lefttoopen:
-        # open this valve
-        remainingtime = path.remainingtime - 1
-        addedrelief = valve.rate * remainingtime
-        pathqueue.add(Path(
-            path.curvalve,
-            path.relief + addedrelief,
-            path.openvalves | { path.curvalve },
-            remainingtime,
-            None,
-            path.trace + " " + path.curvalve))
+        # for each unopened relief valve
+        for name in reliefvalves - state.opened:
+            # simulate going to and opening that valve
+            remaining = state.remaining - getdistance(state.name, name) - 1
+            if 0 < remaining:
+                relief = state.relief + valves[name].rate * remaining
+                opened = state.opened | { name }
+                todo.add(State(name, relief, opened, remaining))
 
-    if path.onward:
-        # We are meant to go somewhere, do not get off that path
-        targets = path.onward
-    else:
-        # We are not set to be going anywhere: let's figure out some targets
+    return maxreliefs
 
-        # relief = relief rate * (remaining time - time to get to and open that valve)
-        potential_relief = {
-            name
-            for name, relief in (
-                (name, valves[name].rate * (
-                    path.remainingtime
-                    - getdistance(path.curvalve, name)
-                    - 1))
-                for name in lefttoopen)
-            if relief > 0
-        }
+print(max(getmaxreliefs("AA", 30).values())) # part 1
 
-        if not potential_relief:
-            # no reachable valves with potential to relieve pressure
-            handlestuckpath(path)
-            return
-
-        targets = potential_relief
-
-    # keys: next tunnel to go to, values: set of valves we are going towards
-    next_tunnels = dict()
-    # for each target valve
-    for target in targets:
-        # select the closest tunnel to move to
-        mindist = maxdist + 1
-        mintunnel = None
-        for tunnel in valve.tunnels:
-            d = getdistance(tunnel, target)
-            if d < mindist:
-                mindist = d
-                mintunnel = tunnel
-        next_tunnels.setdefault(mintunnel, set()).add(target)
-
-    for next_tunnel, onwards in next_tunnels.items():
-        pathqueue.add(Path(
-            next_tunnel,
-            path.relief,
-            path.openvalves,
-            path.remainingtime - 1,
-            onwards,
-            path.trace))
-
-pathqueue.add(Path(
-    startvalve,
-    0,
-    set(),
-    starttime,
-    None,
-    ""))
-while pathqueue:
-    path = pathqueue.pop()
-    handlepath(path)
-
-print(maxrelief)
+# part 2
+maxreliefs = getmaxreliefs("AA", 26)
+# Take all combinations of pairs of sets of open valves, keep the disjoint ones,
+# compute the maximum of the maximum possible reliefs of opening those sets.
+print(max(
+    map(
+        lambda t: maxreliefs[t[0]] + maxreliefs[t[1]],
+        filter(
+            lambda t: t[0].isdisjoint(t[1]),
+            itertools.combinations(
+                maxreliefs.keys(),
+                2
+            )
+        )
+    )
+))
